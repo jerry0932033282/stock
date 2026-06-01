@@ -1,6 +1,6 @@
 {
   "name": "台美股與AI科技ETFs賺錢引擎",
-  "description": "整合晶圓代工、先進封裝 CoWoS 與水冷散熱模組之台美22檔AI權值股與22檔台灣掛牌雙屬性ETFs對比，提供每日17:00排程自適應報表大數據終端。",
+  "description": "整合晶圓代工、先進封裝 CoWoS 與水冷散熱模組之台美22檔AI權值股與22檔台灣掛牌雙屬性ETFs對比，提供每日15:00排程自適應報表大數據終端。",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

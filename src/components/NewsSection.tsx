@@ -6,7 +6,8 @@
 import React, { useState, useMemo } from 'react';
 import { NEWS_AND_REPORTS } from '../data.ts';
 import { NewsAndReportsItem } from '../types.ts';
-import { Calendar, Building, Sparkles, Lightbulb, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Calendar, Building, Sparkles, Lightbulb, TrendingUp, AlertTriangle, ExternalLink } from 'lucide-react';
+import { getBeneficiaryUrl } from '../utils.ts';
 
 interface NewsSectionProps {
   isDarkMode?: boolean;
@@ -176,11 +177,20 @@ export default function NewsSection({ isDarkMode = false }: NewsSectionProps) {
                 }`}>
                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">關聯佈局標的:</span>
                   {item.beneficiaries.map((b, idx) => (
-                    <span key={idx} className={`px-2 py-0.5 rounded-md font-mono text-[10px] border font-bold ${
-                      isDarkMode ? 'bg-slate-800 text-[#00F0FF] border-slate-700/60' : 'bg-slate-100 text-slate-700 border-slate-200'
-                    }`}>
-                      {b}
-                    </span>
+                    <a 
+                      key={idx} 
+                      href={getBeneficiaryUrl(b)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md font-mono text-[10px] border font-bold transition-all duration-150 ${
+                        isDarkMode 
+                          ? 'bg-slate-800 text-[#00F0FF] border-slate-700/60 hover:bg-slate-755 hover:border-[#00F0FF]' 
+                          : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'
+                      }`}
+                    >
+                      <span>{b}</span>
+                      <ExternalLink size={9} className="opacity-70" />
+                    </a>
                   ))}
                 </div>
               </div>
@@ -241,16 +251,20 @@ export default function NewsSection({ isDarkMode = false }: NewsSectionProps) {
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedNews.beneficiaries.map((b, i) => (
-                    <span 
+                    <a 
                       key={i} 
-                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-extrabold border transition cursor-default ${
+                      href={getBeneficiaryUrl(b)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-extrabold border transition ${
                         isDarkMode 
-                          ? 'bg-cyan-950/20 text-[#00F0FF] border-cyan-500/20' 
-                          : 'bg-blue-50 text-blue-700 border-blue-100 hover:border-blue-300'
+                          ? 'bg-cyan-950/20 text-[#00F0FF] border-cyan-500/20 hover:border-[#00F0FF]/50 hover:bg-cyan-900/30' 
+                          : 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100/50 hover:border-blue-300'
                       }`}
                     >
-                      {b}
-                    </span>
+                      <span>{b}</span>
+                      <ExternalLink size={10} className="opacity-70" />
+                    </a>
                   ))}
                 </div>
               </div>

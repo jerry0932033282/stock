@@ -6,7 +6,7 @@
 import React from 'react';
 import { Stock } from '../types.ts';
 import { TrendingUp, TrendingDown, HelpCircle, Award, Volume2, Target, ExternalLink } from 'lucide-react';
-import { getGoogleFinanceUrl, getTrendTextColor, getTrendBgColor, formatVolume } from '../utils.ts';
+import { getGoogleFinanceUrl, getTrendTextColor, getTrendBgColor, formatVolume, getSectorSearchUrl } from '../utils.ts';
 
 interface ScreenerTableProps {
   stocks: Stock[];
@@ -95,7 +95,17 @@ export default function ScreenerTable({ stocks, marketType, isDarkMode = false }
                       </span>
                     </a>
                   </h4>
-                  <p className={`text-xs mt-1 font-semibold ${isDarkMode ? 'text-[#00F0FF]' : 'text-blue-600'}`}>{stock.sector}</p>
+                  <a 
+                    href={getSectorSearchUrl(stock.sector)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`text-xs mt-1 font-semibold hover:underline flex items-center gap-0.5 ${
+                      isDarkMode ? 'text-[#00F0FF]' : 'text-blue-600'
+                    }`}
+                  >
+                    <span>{stock.sector}</span>
+                    <ExternalLink size={10} className="opacity-70" />
+                  </a>
                 </div>
                 
                 <div className="text-right font-sans">
@@ -234,11 +244,19 @@ export default function ScreenerTable({ stocks, marketType, isDarkMode = false }
 
                     {/* Sector */}
                     <td className="p-4">
-                      <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-bold border ${
-                        isDarkMode ? 'bg-slate-800/60 text-slate-300 border-slate-700/60' : 'bg-slate-50 text-slate-705 border-slate-200'
-                      }`}>
-                        {stock.sector}
-                      </span>
+                      <a 
+                        href={getSectorSearchUrl(stock.sector)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border transition duration-150 ${
+                          isDarkMode 
+                            ? 'bg-slate-800/60 text-slate-300 border-slate-700/60 hover:border-[#00F0FF]/50 hover:text-[#00F0FF]' 
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50/20'
+                        }`}
+                      >
+                        <span>{stock.sector}</span>
+                        <ExternalLink size={10} className="opacity-70" />
+                      </a>
                     </td>
 
                     {/* Today Price */}

@@ -16,7 +16,7 @@ interface SchedulerSectionProps {
   reportGenerated: boolean;
   generatedReport: string;
   copiedNotification: boolean;
-  fastForwardTo17: () => void;
+  fastForwardTo15: () => void;
   resetScheduler: () => void;
   triggerAutoReportGeneration: () => void;
   formatCountdown: () => string;
@@ -24,6 +24,7 @@ interface SchedulerSectionProps {
   taiwanStocks: Stock[];
   taiwanOnlyEtfs: any[];
   globalTechEtfs: any[];
+  usStocks?: Stock[];
   isDarkMode?: boolean;
 }
 
@@ -32,7 +33,7 @@ export default function SchedulerSection({
   reportGenerated,
   generatedReport,
   copiedNotification,
-  fastForwardTo17,
+  fastForwardTo15,
   resetScheduler,
   triggerAutoReportGeneration,
   formatCountdown,
@@ -40,13 +41,16 @@ export default function SchedulerSection({
   taiwanStocks,
   taiwanOnlyEtfs,
   globalTechEtfs,
+  usStocks,
   isDarkMode = false
 }: SchedulerSectionProps) {
 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
+  const usStocksList = usStocks || US_AI_STOCKS;
+
   const strongTW = taiwanStocks.filter(s => s.maStrength === 3);
-  const strongUS = US_AI_STOCKS.filter(s => s.maStrength === 3);
+  const strongUS = usStocksList.filter(s => s.maStrength === 3);
   const strongTWEtfs = taiwanOnlyEtfs.filter(e => e.maStrength === 3);
   const strongGlobalEtfs = globalTechEtfs.filter(e => e.maStrength === 3);
 
@@ -97,13 +101,13 @@ export default function SchedulerSection({
               <h3 className={`text-lg md:text-xl font-extrabold tracking-tight ${
                 isDarkMode ? 'text-white' : 'text-slate-900'
               }`}>
-                17:00 自動報告排程排程器 ({taiwanStocks.length + US_AI_STOCKS.length}檔個股 + {taiwanOnlyEtfs.length + globalTechEtfs.length}檔台灣掛牌ETF)
+                15:00 自動報告排程排程器 ({taiwanStocks.length + usStocksList.length}檔個股 + {taiwanOnlyEtfs.length + globalTechEtfs.length}檔台灣掛牌ETF)
               </h3>
             </div>
             <p className={`text-xs md:text-sm max-w-4xl leading-relaxed font-semibold ${
               isDarkMode ? 'text-slate-300' : 'text-slate-600'
             }`}>
-              系統每日下午 17:00 排程自動彙整台美大數據，統計包含台灣 {taiwanStocks.length} 檔 AI 關鍵股、美國 {US_AI_STOCKS.length} 檔 AI 重量權值股，以及合計 {taiwanOnlyEtfs.length + globalTechEtfs.length} 檔在台上市掛牌的多領域 ETFs。收盤秒級完成除權息與大額基金拆股等最新交叉數據庫對比，自動校驗均線強度並產出最新研報。
+              系統每日下午 15:00 排程自動彙整台美大數據，統計包含台灣 {taiwanStocks.length} 檔 AI 關鍵股、美國 {usStocksList.length} 檔 AI 重量權值股，以及合計 {taiwanOnlyEtfs.length + globalTechEtfs.length} 檔在台上市掛牌的多領域 ETFs。收盤秒級完成除權息與大額基金拆股等最新交叉數據庫對比，自動校驗均線強度並產出最新研報。
             </p>
           </div>
           
@@ -121,7 +125,7 @@ export default function SchedulerSection({
               isDarkMode ? 'bg-[#0f172a] border-slate-800' : 'bg-slate-50 border-slate-200'
             }`}>
               <span className={`text-[10px] block uppercase font-bold tracking-wider font-sans ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>每日排程觸發</span>
-              <span className={`text-lg font-extrabold font-mono ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>17:00:00</span>
+              <span className={`text-lg font-extrabold font-mono ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>15:00:00</span>
             </div>
           </div>
         </div>
@@ -137,7 +141,7 @@ export default function SchedulerSection({
             </h4>
             <p className={`text-xs leading-relaxed font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
               {reportGenerated 
-                ? "✨ 今日產業研報已於 17:00:00 自動觸發生成。下方展示高度規格化的 Markdown 分析與統計，可一鍵點選複製。"
+                ? "✨ 今日產業研報已於 15:00:00 自動觸發生成。下方展示高度規格化的 Markdown 分析與統計，可一鍵點選複製。"
                 : `⏳ 背景待命計時中，距離自動產出尚有 ${formatCountdown()}。您可以隨時點擊右側按鈕跳過計時，強制觸發。`
               }
             </p>
@@ -186,7 +190,7 @@ export default function SchedulerSection({
               <div className="flex items-center gap-2">
                 <FileText size={15} className="text-emerald-500" />
                 <span className="font-extrabold text-xs md:text-sm truncate">
-                  AI_SUPPLY_CHAIN_DAILY_REPORT_1700.md (本日深度大數據特寫)
+                  AI_SUPPLY_CHAIN_DAILY_REPORT_1500.md (本日深度大數據特寫)
                 </span>
               </div>
 
@@ -253,8 +257,8 @@ export default function SchedulerSection({
                       <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse"></span>
                       <span className="text-[10px] uppercase font-black tracking-wider text-blue-600">DAILY STRATEGY DECISION REPORT</span>
                     </div>
-                    <h1 className="text-xl font-black text-slate-900 tracking-tight">📈 AI 產業供應鏈每日決策報告 (每日 17:00)</h1>
-                    <p className="text-[10px] text-slate-500 font-medium">資料庫確認時間: 2026-05-30 17:00:00 (自動研報引擎已彙總最新除權息數據) | 價格來源: Google Finance</p>
+                    <h1 className="text-xl font-black text-slate-900 tracking-tight">📈 AI 產業供應鏈每日決策報告 (每日 15:00)</h1>
+                    <p className="text-[10px] text-slate-500 font-medium">資料庫確認時間: 2026-05-30 15:00:00 (自動研報引擎已彙總最新除權息數據) | 價格來源: Google Finance</p>
                   </div>
                   <div className="text-right shrink-0">
                     <span className="inline-block bg-slate-100 text-slate-800 font-mono text-[9px] font-bold px-2 py-1 rounded">
@@ -284,8 +288,8 @@ export default function SchedulerSection({
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                       <span className="text-[10px] text-slate-500 block font-bold">美國 AI 核心股多頭強度 3 比例</span>
                       <div className="text-base font-black text-emerald-700 mt-1 font-mono">
-                        {(strongUS.length / US_AI_STOCKS.length * 100).toFixed(1)}%
-                        <span className="text-xs text-slate-500 font-normal ml-1">({strongUS.length} / {US_AI_STOCKS.length} 檔)</span>
+                        {(strongUS.length / usStocksList.length * 100).toFixed(1)}%
+                        <span className="text-xs text-slate-500 font-normal ml-1">({strongUS.length} / {usStocksList.length} 檔)</span>
                       </div>
                       <p className="text-[10px] text-slate-600 mt-1 leading-normal">
                         美國重權值 AI 晶片霸主多頭排列比例及資金強流入指標。
@@ -377,7 +381,7 @@ export default function SchedulerSection({
                 {/* Header design banner */}
                 <div className="border-b-2 border-blue-600 pb-4 flex justify-between items-end">
                   <div>
-                    <h1 className="text-base font-bold text-slate-900 tracking-tight">📈 AI 產業供應鏈每日決策報告 (每日 17:00)</h1>
+                    <h1 className="text-base font-bold text-slate-900 tracking-tight">📈 AI 產業供應鏈每日決策報告 (每日 15:00)</h1>
                     <p className="text-[9px] text-slate-500 font-medium">自動排程分析數據庫 | 全面覆蓋全球最領先 AI 半導體重權值股</p>
                   </div>
                   <div className="text-right shrink-0">
@@ -407,7 +411,7 @@ export default function SchedulerSection({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {US_AI_STOCKS.map((stock) => {
+                        {usStocksList.map((stock) => {
                           const isUp = stock.change >= 0;
                           return (
                             <tr key={stock.symbol} className="hover:bg-slate-50/50">
@@ -502,7 +506,7 @@ export default function SchedulerSection({
                 {/* Header design banner */}
                 <div className="border-b-2 border-blue-600 pb-4 flex justify-between items-end">
                   <div>
-                    <h1 className="text-base font-bold text-slate-900 tracking-tight">📈 AI 產業供應鏈每日決策報告 (每日 17:00)</h1>
+                    <h1 className="text-base font-bold text-slate-900 tracking-tight">📈 AI 產業供應鏈每日決策報告 (每日 15:00)</h1>
                     <p className="text-[9px] text-slate-500 font-medium">跨國資產追蹤與全球供應鏈多因子資產配比結論</p>
                   </div>
                   <div className="text-right shrink-0">
@@ -593,7 +597,7 @@ export default function SchedulerSection({
                 {/* Footer Disclaimer */}
                 <div className="pt-4 border-t border-slate-200 text-center">
                   <p className="text-[9px] text-slate-500 font-medium leading-relaxed italic">
-                    （本報告由系統於每日下午 17:00 自動產出，價格數據源自 Google Finance 谷歌財經，數據僅供策略研究參考，投資人應自行承擔交易風險，並建議落實嚴格資金控管手法。）
+                    （本報告由系統於每日下午 15:00 自動產出，價格數據源自 Google Finance 谷歌財經，數據僅供策略研究參考，投資人應自行承擔交易風險，並建議落實嚴格資金控管手法。）
                   </p>
                 </div>
               </div>
@@ -610,11 +614,11 @@ export default function SchedulerSection({
           }`}>
             <Clock size={24} className={isDarkMode ? 'text-[#00F0FF] animate-pulse' : 'text-slate-400 animate-pulse'} />
           </div>
-          <h4 className={`font-extrabold text-base ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>自動排程監控中。尚未抵達每日 17:00 產出臨界點</h4>
+          <h4 className={`font-extrabold text-base ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>自動排程監控中。尚未抵達每日 15:00 產出臨界點</h4>
           <p className={`text-xs max-w-lg mx-auto mt-2 leading-relaxed font-semibold ${
             isDarkMode ? 'text-slate-400' : 'text-slate-500'
           }`}>
-            系統時間正以 10 倍高速運作中，您可以等待倒數自然流逝，也可以點選左下側的「快進至 17:00」或是點擊上方「強制模擬生成」直接提取彙總結果。
+            系統時間正以 10 倍高速運作中，您可以等待倒數自然流逝，也可以點選左下側的「快進至 15:00」或是點擊上方「強制模擬生成」直接提取彙總結果。
           </p>
         </div>
       )}

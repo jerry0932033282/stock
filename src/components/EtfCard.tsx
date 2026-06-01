@@ -6,7 +6,7 @@
 import React from 'react';
 import { Etf } from '../types.ts';
 import { TrendingUp, TrendingDown, Layers, Award, BarChart3, ExternalLink } from 'lucide-react';
-import { getGoogleFinanceUrl, getTrendTextColor, getTrendBgColor, formatVolume } from '../utils.ts';
+import { getGoogleFinanceUrl, getTrendTextColor, getTrendBgColor, formatVolume, getHoldingUrl } from '../utils.ts';
 
 interface EtfCardProps {
   etf: Etf;
@@ -112,15 +112,23 @@ export default function EtfCard({ etf, isDarkMode = false }: EtfCardProps) {
           </span>
           <div className="grid grid-cols-2 gap-2">
             {etf.topHoldings.map((hold, idx) => (
-              <div 
+              <a 
                 key={idx} 
-                className={`p-2.5 rounded-xl border flex justify-between items-center text-xs shadow-sm font-sans ${
-                  isDarkMode ? 'bg-[#1E293B]/30 border-slate-805/70 text-slate-200' : 'bg-white border-slate-200'
+                href={getHoldingUrl(hold.name)}
+                target="_blank"
+                rel="noreferrer"
+                className={`p-2.5 rounded-xl border flex justify-between items-center text-xs shadow-sm font-sans transition duration-150 ${
+                  isDarkMode 
+                    ? 'bg-[#1E293B]/30 border-slate-800 text-slate-200 hover:border-[#00F0FF]/40 hover:bg-[#1E293B]/50' 
+                    : 'bg-white border-slate-200 text-slate-800 hover:border-blue-300 hover:bg-blue-50/20'
                 }`}
               >
-                <span className={`truncate font-semibold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{hold.name}</span>
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className={`truncate font-semibold ${isDarkMode ? 'text-slate-200' : 'text-slate-850'}`}>{hold.name}</span>
+                  <ExternalLink size={9} className="opacity-60 shrink-0" />
+                </div>
                 <span className={`font-extrabold font-mono shrink-0 ml-1.5 ${isDarkMode ? 'text-[#00F0FF]' : 'text-blue-600'}`}>{hold.weight}%</span>
-              </div>
+              </a>
             ))}
           </div>
         </div>

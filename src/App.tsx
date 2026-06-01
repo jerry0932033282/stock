@@ -49,15 +49,16 @@ export default function App() {
   const [priceVolFilter, setPriceVolFilter] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
-  // Fugle Market Data Integration State
+  // Fugle/Google Finance Integration State
   const [taiwanStocks, setTaiwanStocks] = useState<Stock[]>(TAIWAN_AI_STOCKS);
+  const [usStocks, setUsStocks] = useState<Stock[]>(US_AI_STOCKS);
   const [taiwanOnlyEtfs, setTaiwanOnlyEtfs] = useState<any[]>(TAIWAN_ONLY_ETFS);
   const [globalTechEtfs, setGlobalTechEtfs] = useState<any[]>(GLOBAL_TECH_ETFS);
   const [isFugleLoading, setIsFugleLoading] = useState<boolean>(true);
   const [fugleError, setFugleError] = useState<string | null>(null);
 
   // Simulated clock
-  const [currentTime, setCurrentTime] = useState<Date>(new Date("2026-05-30T16:58:30"));
+  const [currentTime, setCurrentTime] = useState<Date>(new Date("2026-05-30T14:58:30"));
   const [schedulerEnabled, setSchedulerEnabled] = useState<boolean>(true);
   const [reportGenerated, setReportGenerated] = useState<boolean>(false);
   const [generatedReport, setGeneratedReport] = useState<string>("");
@@ -77,7 +78,7 @@ export default function App() {
       setCurrentTime(prevTime => {
         const nextTime = new Date(prevTime.getTime() + 10000); // 10s increment
         if (schedulerEnabled && !reportGenerated && 
-            nextTime.getHours() === 17 && nextTime.getMinutes() >= 0) {
+            nextTime.getHours() === 15 && nextTime.getMinutes() >= 0) {
           triggerAutoReportGeneration();
         }
         return nextTime;
@@ -87,7 +88,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [schedulerEnabled, reportGenerated, taiwanStocks, taiwanOnlyEtfs, globalTechEtfs]);
 
-  // Load Fugle real-time stock and ETF quotes on mount
+  // Load real-time stock and ETF quotes on mount
   useEffect(() => {
     async function loadFugleData() {
       setIsFugleLoading(true);
@@ -96,10 +97,11 @@ export default function App() {
         const twStockIds = TAIWAN_AI_STOCKS.map(s => s.id).filter(id => /^\d+[A-Z]?$/i.test(id));
         const twEtfIds = TAIWAN_ONLY_ETFS.map(e => e.id).filter(id => /^\d+[A-Z]?$/i.test(id));
         const globalEtfIds = GLOBAL_TECH_ETFS.map(e => e.id).filter(id => /^\d+[A-Z]?$/i.test(id));
+        const usStockIds = US_AI_STOCKS.map(s => s.id);
         
-        const allIds = Array.from(new Set([...twStockIds, ...twEtfIds, ...globalEtfIds]));
+        const allIds = Array.from(new Set([...twStockIds, ...twEtfIds, ...globalEtfIds, ...usStockIds]));
         
-        const response = await fetch(`/api/fugle-quotes?symbols=${allIds.join(',')}`);
+        const response = await fetch(`/api/quotes?symbols=${allIds.join(',')}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -121,6 +123,26 @@ export default function App() {
               const liveChangePercent = live.changePercent ?? 0;
               const liveVolume = live.tradeVolume ? live.tradeVolume / 1000 : stock.volume;
               
+              return {
+                ...stock,
+                price: parseFloat(livePrice.toFixed(2)),
+                change: parseFloat(liveChange.toFixed(2)),
+                changePercent: parseFloat(liveChangePercent.toFixed(2)),
+                volume: parseFloat(liveVolume.toFixed(2)),
+                volumeUp: liveChangePercent > 1.5,
+                lastUpdated: live.lastUpdated
+              };
+            }
+            return stock;
+          }));
+
+          setUsStocks(prev => prev.map(stock => {
+            const live = quotesMap.get(stock.id);
+            if (live) {
+              const livePrice = live.closePrice ?? live.openPrice ?? stock.price;
+              const liveChange = live.change ?? 0;
+              const liveChangePercent = live.changePercent ?? 0;
+              const liveVolume = live.tradeVolume ?? stock.volume;
               return {
                 ...stock,
                 price: parseFloat(livePrice.toFixed(2)),
@@ -173,7 +195,7 @@ export default function App() {
           }));
         }
       } catch (err: any) {
-        console.error("Failed to load Fugle real-time data:", err);
+        console.error("Failed to load real-time stock and ETF data:", err);
         setFugleError(err.message || "Failed to load real-time data");
       } finally {
         setIsFugleLoading(false);
@@ -189,7 +211,7 @@ export default function App() {
 
   const getCountdownSeconds = () => {
     const target = new Date(currentTime);
-    target.setHours(17, 0, 0, 0);
+    target.setHours(15, 0, 0, 0);
     const diff = target.getTime() - currentTime.getTime();
     if (diff <= 0) return 0;
     return Math.floor(diff / 1000);
@@ -197,7 +219,7 @@ export default function App() {
 
   const formatCountdown = () => {
     const totalSecs = getCountdownSeconds();
-    if (totalSecs <= 0) return "已啟動今日 17:00 報告";
+    if (totalSecs <= 0) return "已啟動今日 15:00 報告";
     const mins = Math.floor(totalSecs / 60);
     const secs = totalSecs % 60;
     return `${mins.toString().padStart(2, '0')} 分 ${secs.toString().padStart(2, '0')} 秒`;
@@ -207,13 +229,13 @@ export default function App() {
     setReportGenerated(true);
     
     const strongTW = taiwanStocks.filter(s => s.maStrength === 3);
-    const strongUS = US_AI_STOCKS.filter(s => s.maStrength === 3);
+    const strongUS = usStocks.filter(s => s.maStrength === 3);
     const strongTWEtfs = taiwanOnlyEtfs.filter(e => e.maStrength === 3);
     const strongGlobalEtfs = globalTechEtfs.filter(e => e.maStrength === 3);
 
     const reportMarkdown = `
-# 📈 AI 產業供應鏈每日決策報告 (每日 17:00 全自動產出)
-**資料庫確認時間**: 2026-05-30 17:00:00 (自動化研報引擎 - 已彙總最新除權息及拆股數據)
+# 📈 AI 產業供應鏈每日決策報告 (每日 15:00 全自動產出)
+**資料庫確認時間**: 2026-05-30 15:00:00 (自動化研報引擎 - 已彙總最新除權息及拆股數據)
 **價格資料來源**: 本報告所有收盤價格及成交量數據均提取自 [Fugle Market Data / Google Finance 跨系統校驗]
 **核心依據**: 「營收YoY & MoM雙動能」、「多頭均線3>2>1強度註記」、「價漲量增共識」與「今日熱門產業新聞與機構研究」
 
@@ -225,7 +247,7 @@ export default function App() {
 
 - **多頭強度 3 比例 (MA5 > MA20 > MA60 > MA120)**: 
   - **台灣 AI 核心股**: ${(strongTW.length / taiwanStocks.length * 100).toFixed(1)}% (${strongTW.length} / ${taiwanStocks.length} 檔)
-  - **美國 AI 核心股**: ${(strongUS.length / US_AI_STOCKS.length * 100).toFixed(1)}% (${strongUS.length} / ${US_AI_STOCKS.length} 檔)
+  - **美國 AI 核心股**: ${(strongUS.length / usStocks.length * 100).toFixed(1)}% (${strongUS.length} / ${usStocks.length} 檔)
 - **今日最關鍵新聞**: 《${NEWS_AND_REPORTS[1].title}》- 奠定散熱雙雄核心強度。
 - **最新重磅研報**: 《${NEWS_AND_REPORTS[3].title}》- 目標價上調（聯發科：${NEWS_AND_REPORTS[3].targetPrices?.[0].tp}，博通：${NEWS_AND_REPORTS[3].targetPrices?.[1].tp}）。
 
@@ -246,7 +268,7 @@ ${idx + 1}. **【${stock.id} ${stock.name}】** - ${stock.sector}
 
 ## 🇺🇸 三、 美國 AI 供應鏈核心數據彙整 (11 檔)
 
-${US_AI_STOCKS.map((stock, idx) => `
+${usStocks.map((stock, idx) => `
 ${idx + 1}. **【${stock.symbol} ${stock.name}】** - ${stock.sector}
    - **本日價格**: US$ ${stock.price} (${stock.change >= 0 ? "+" : ""}${stock.change} | ${stock.changePercent >= 0 ? "+" : ""}${stock.changePercent}%) | **成交量**: ${formatVolume(stock.volume, stock.symbol)}
    - **均線多頭與強度**: ${"★".repeat(stock.maStrength)} (強度等級 ${stock.maStrength}) | ${stock.volumeUp ? "🟢 量價齊揚" : "⚪ 價量整理"}
@@ -291,20 +313,20 @@ ${globalTechEtfs.map((etf, idx) => `
    - 主動操作 的 **【主動統一台股增長】** 憑藉高持股靈活性（重倉散熱與先進製程），走勢持續強於被動指數。
    - **國泰臺韓科技 (00735)** 兼顧計算與 HBM 記憶體，是當前降低美股波動風險的優質資產避風港。
 
-*（本報告由系統於每日下午 17:00 自動產出，價格數據源自 Google Finance 與富果即時數據源，數據僅供策略研究參考，投資人應自行承擔交易風險）*
+*（本報告由系統於每日下午 15:00 自動產出，價格數據源自 Google Finance 與富果即時數據源，數據僅供策略研究參考，投資人應自行承擔交易風險）*
 `;
     setGeneratedReport(reportMarkdown);
   };
 
-  const fastForwardTo17 = () => {
+  const fastForwardTo15 = () => {
     const ffTime = new Date(currentTime);
-    ffTime.setHours(16, 59, 50); 
+    ffTime.setHours(14, 59, 50); 
     setCurrentTime(ffTime);
     setReportGenerated(false);
   };
 
   const resetScheduler = () => {
-    const resetTime = new Date("2026-05-30T16:58:30");
+    const resetTime = new Date("2026-05-30T14:58:30");
     setCurrentTime(resetTime);
     setReportGenerated(false);
   };
@@ -324,7 +346,7 @@ ${globalTechEtfs.map((etf, idx) => `
     document.body.removeChild(textArea);
   };
 
-  const currentStocksList: Stock[] = marketType === 'TW' ? TAIWAN_AI_STOCKS : US_AI_STOCKS;
+  const currentStocksList: Stock[] = marketType === 'TW' ? taiwanStocks : usStocks;
 
   const t01 = taiwanOnlyEtfs.find(e => e.id === "00981A") || taiwanOnlyEtfs[0];
   const etf00735 = globalTechEtfs.find(e => e.id === "00735") || globalTechEtfs[0];
@@ -345,6 +367,41 @@ ${globalTechEtfs.map((etf, idx) => `
       return matchSearch && matchStrength && matchPriceVol;
     });
   }, [marketType, searchQuery, strengthFilter, priceVolFilter]);
+
+  // Multi-factor Filtered List of Taiwan ETFs
+  const filteredTaiwanOnlyEtfs = useMemo(() => {
+    return taiwanOnlyEtfs.filter(etf => {
+      const matchSearch = 
+        etf.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        etf.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        etf.aiPurity.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        etf.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        etf.topHoldings.some((h: any) => h.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchStrength = strengthFilter === 'all' ? true : etf.maStrength.toString() === strengthFilter;
+      // For ETFs, if priceVolFilter is true, we fallback to showing ETFs with positive/steady day gain (etf.changePercent >= 0) as a proxy
+      const matchPriceVol = priceVolFilter ? etf.change >= 0 : true;
+
+      return matchSearch && matchStrength && matchPriceVol;
+    });
+  }, [taiwanOnlyEtfs, searchQuery, strengthFilter, priceVolFilter]);
+
+  // Multi-factor Filtered List of Global ETFs
+  const filteredGlobalTechEtfs = useMemo(() => {
+    return globalTechEtfs.filter(etf => {
+      const matchSearch = 
+        etf.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        etf.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        etf.aiPurity.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        etf.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        etf.topHoldings.some((h: any) => h.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchStrength = strengthFilter === 'all' ? true : etf.maStrength.toString() === strengthFilter;
+      const matchPriceVol = priceVolFilter ? etf.change >= 0 : true;
+
+      return matchSearch && matchStrength && matchPriceVol;
+    });
+  }, [globalTechEtfs, searchQuery, strengthFilter, priceVolFilter]);
 
   // Tab switching helper which also closes mobile drawer
   const handleTabSelect = (tab: string) => {
@@ -506,7 +563,7 @@ ${globalTechEtfs.map((etf, idx) => `
             >
               <div className="flex items-center space-x-3">
                 <Clock size={16} />
-                <span>17:00 產出控制站</span>
+                <span>15:00 產出控制站</span>
               </div>
             </button>
           </nav>
@@ -540,12 +597,12 @@ ${globalTechEtfs.map((etf, idx) => `
             </div>
             <div className="flex gap-2">
               <button 
-                onClick={fastForwardTo17}
+                onClick={fastForwardTo15}
                 className={`flex-1 text-[11px] font-bold py-2 px-2 rounded-lg transition text-center cursor-pointer ${
                   isDarkMode ? 'bg-[#00F0FF] hover:bg-cyan-300 text-slate-950' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
                 }`}
               >
-                快進至 17:00
+                快進至 15:00
               </button>
               <button 
                 onClick={resetScheduler}
@@ -614,10 +671,10 @@ ${globalTechEtfs.map((etf, idx) => `
                 {activeTab === 'taiwanETFs' && '高流動性純台股成分 ETFs 分佈'}
                 {activeTab === 'globalETFs' && '跨國加台股科技混合 ETFs 分佈'}
                 {activeTab === 'news' && '精研特急新聞與研報'}
-                {activeTab === 'scheduler' && '17:00 排程研報產出控制站'}
+                {activeTab === 'scheduler' && '15:00 排程研報產出控制站'}
               </h2>
               <p className={`text-xs md:text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                每日 17:00 自動完成均線強度排列、大量突破智篩與法人研究總結
+                每日 15:00 自動完成均線強度排列、大量突破智篩與法人研究總結
               </p>
             </div>
 
@@ -643,7 +700,7 @@ ${globalTechEtfs.map((etf, idx) => `
                         : isDarkMode ? 'text-slate-400 hover:text-[#00F0FF]' : 'text-slate-600 hover:text-blue-600'
                     }`}
                   >
-                    美國股市 ({US_AI_STOCKS.length} 檔)
+                    美國股市 ({usStocks.length} 檔)
                   </button>
                 </div>
               </div>
@@ -651,66 +708,68 @@ ${globalTechEtfs.map((etf, idx) => `
           </section>
 
           {/* DYNAMIC METRIC TICKS BENTO GRID */}
-          <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className={`p-4 rounded-2xl border shadow-sm transition-colors duration-200 ${
-              isDarkMode ? 'bg-[#111827] border-[#1e2d42]' : 'bg-white border-slate-200'
-            }`}>
-              <p className={`text-[10px] md:text-xs font-bold tracking-wider uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>多頭排列完美排列 (強度 3)</p>
-              <div className="flex items-baseline space-x-2 mt-2">
-                <span className={`text-2xl md:text-3xl font-mono font-black ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`}>
-                  {TAIWAN_AI_STOCKS.filter(s => s.maStrength === 3).length + US_AI_STOCKS.filter(s => s.maStrength === 3).length}
-                </span>
-                <span className="text-xs text-slate-500 font-medium">/ 40 檔個股</span>
+          {activeTab === 'dashboard' && (
+            <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className={`p-4 rounded-2xl border shadow-sm transition-colors duration-200 ${
+                isDarkMode ? 'bg-[#111827] border-[#1e2d42]' : 'bg-white border-slate-200'
+              }`}>
+                <p className={`text-[10px] md:text-xs font-bold tracking-wider uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>多頭排列完美排列 (強度 3)</p>
+                <div className="flex items-baseline space-x-2 mt-2">
+                  <span className={`text-2xl md:text-3xl font-mono font-black ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`}>
+                    {taiwanStocks.filter(s => s.maStrength === 3).length + usStocks.filter(s => s.maStrength === 3).length}
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium">/ 40 檔個股</span>
+                </div>
+                <div className={`text-[10px] font-bold mt-1 ${isDarkMode ? 'text-rose-400/80' : 'text-rose-600'}`}>
+                  MA5 &gt; MA20 &gt; MA60 &gt; MA120 (強力吸籌)
+                </div>
               </div>
-              <div className={`text-[10px] font-bold mt-1 ${isDarkMode ? 'text-rose-400/80' : 'text-rose-600'}`}>
-                MA5 &gt; MA20 &gt; MA60 &gt; MA120 (強力吸籌)
-              </div>
-            </div>
 
-            <div className={`p-4 rounded-2xl border shadow-sm transition-colors duration-200 ${
-              isDarkMode ? 'bg-[#111827] border-[#1e2d42]' : 'bg-white border-slate-200'
-            }`}>
-              <p className={`text-[10px] md:text-xs font-bold tracking-wider uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>當日量價齊揚突破比例</p>
-              <div className="flex items-baseline space-x-2 mt-2">
-                <span className={`text-2xl md:text-3xl font-mono font-black ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                  {((TAIWAN_AI_STOCKS.filter(s => s.volumeUp).length + US_AI_STOCKS.filter(s => s.volumeUp).length) / 40 * 100).toFixed(0)}%
-                </span>
-                <span className="text-xs text-slate-500 font-medium">看漲量增共識</span>
+              <div className={`p-4 rounded-2xl border shadow-sm transition-colors duration-200 ${
+                isDarkMode ? 'bg-[#111827] border-[#1e2d42]' : 'bg-white border-slate-200'
+              }`}>
+                <p className={`text-[10px] md:text-xs font-bold tracking-wider uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>當日量價齊揚突破比例</p>
+                <div className="flex items-baseline space-x-2 mt-2">
+                  <span className={`text-2xl md:text-3xl font-mono font-black ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                    {((taiwanStocks.filter(s => s.volumeUp).length + usStocks.filter(s => s.volumeUp).length) / 40 * 100).toFixed(0)}%
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium">看漲量增共識</span>
+                </div>
+                <div className={`text-[10px] font-bold mt-1 ${isDarkMode ? 'text-emerald-400/80' : 'text-emerald-600'}`}>
+                  成交量達 20 日均量 1.3 倍以上
+                </div>
               </div>
-              <div className={`text-[10px] font-bold mt-1 ${isDarkMode ? 'text-emerald-400/80' : 'text-emerald-600'}`}>
-                成交量達 20 日均量 1.3 倍以上
-              </div>
-            </div>
 
-            <div className={`p-4 rounded-2xl border shadow-sm transition-colors duration-200 ${
-              isDarkMode ? 'bg-[#111827] border-[#1e2d42]' : 'bg-white border-slate-200'
-            }`}>
-              <p className={`text-[10px] md:text-xs font-bold tracking-wider uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>追蹤機構研報及特急新聞</p>
-              <div className="flex items-baseline space-x-2 mt-2">
-                <span className={`text-2xl md:text-3xl font-mono font-black ${isDarkMode ? 'text-[#00F0FF]' : 'text-blue-600'}`}>
-                  {NEWS_AND_REPORTS.length}
-                </span>
-                <span className="text-xs text-slate-500 font-medium">章關鍵洞察</span>
+              <div className={`p-4 rounded-2xl border shadow-sm transition-colors duration-200 ${
+                isDarkMode ? 'bg-[#111827] border-[#1e2d42]' : 'bg-white border-slate-200'
+              }`}>
+                <p className={`text-[10px] md:text-xs font-bold tracking-wider uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>追蹤機構研報及特急新聞</p>
+                <div className="flex items-baseline space-x-2 mt-2">
+                  <span className={`text-2xl md:text-3xl font-mono font-black ${isDarkMode ? 'text-[#00F0FF]' : 'text-blue-600'}`}>
+                    {NEWS_AND_REPORTS.length}
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium">章關鍵洞察</span>
+                </div>
+                <div className={`text-[10px] font-semibold mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  大摩、元大等高含金量追蹤
+                </div>
               </div>
-              <div className={`text-[10px] font-semibold mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                大摩、元大等高含金量追蹤
-              </div>
-            </div>
 
-            <div className={`p-4 rounded-2xl border shadow-sm transition-colors duration-200 ${
-              isDarkMode ? 'bg-[#111827] border-[#1e2d42]' : 'bg-white border-slate-200'
-            }`}>
-              <p className={`text-[10px] md:text-xs font-bold tracking-wider uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>17:00 伺服器研報</p>
-              <div className="flex items-baseline space-x-2 mt-2">
-                <span className={`text-base md:text-lg font-bold font-mono ${isDarkMode ? 'text-yellow-400' : 'text-amber-600'}`}>
-                  {reportGenerated ? "🟢 自動產出就緒" : "⏳ 待時間觸發"}
-                </span>
+              <div className={`p-4 rounded-2xl border shadow-sm transition-colors duration-200 ${
+                isDarkMode ? 'bg-[#111827] border-[#1e2d42]' : 'bg-white border-slate-200'
+              }`}>
+                <p className={`text-[10px] md:text-xs font-bold tracking-wider uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>15:00 伺服器研報</p>
+                <div className="flex items-baseline space-x-2 mt-2">
+                  <span className={`text-base md:text-lg font-bold font-mono ${isDarkMode ? 'text-yellow-400' : 'text-amber-600'}`}>
+                    {reportGenerated ? "🟢 自動產出就緒" : "⏳ 待時間觸發"}
+                  </span>
+                </div>
+                <div className={`text-[10px] font-semibold mt-1.5 ${isDarkMode ? 'text-yellow-400/80' : 'text-amber-600'}`}>
+                  彙整 {taiwanStocks.length + usStocks.length} 檔個股與雙屬性 ETFs
+                </div>
               </div>
-              <div className={`text-[10px] font-semibold mt-1.5 ${isDarkMode ? 'text-yellow-400/80' : 'text-amber-600'}`}>
-                彙整 {TAIWAN_AI_STOCKS.length + US_AI_STOCKS.length} 檔個股與雙屬性 ETFs
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           {/* TAB CONTENT SWITCHER CONTAINER */}
           <div className="space-y-4">
@@ -1085,6 +1144,95 @@ ${globalTechEtfs.map((etf, idx) => `
             {/* TAB 3: TAIWAN ONLY ETFs */}
             {activeTab === 'taiwanETFs' && (
               <div className="space-y-6 animate-fadeIn">
+                {/* 多因子量化交叉個股篩選櫃 */}
+                <div className={`border rounded-2xl p-5 space-y-4 shadow-sm ${
+                  isDarkMode ? 'bg-[#111827] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+                }`}>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <h3 className={`font-extrabold text-base md:text-lg ${isDarkMode ? 'text-[#00F0FF]' : 'text-slate-900'}`}>
+                      多因子量化交叉個股篩選櫃
+                    </h3>
+                    <span className={`text-[10px] px-2 py-1 font-mono rounded border ${
+                      isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 text-slate-600 border-slate-200'
+                    }`}>
+                      2026-05-30 資料庫狀態
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Search string */}
+                    <div>
+                      <label className={`text-[11px] font-bold block mb-1.5 uppercase font-sans ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>關鍵字篩選</label>
+                      <input 
+                        type="text"
+                        placeholder="搜尋代號、名稱、細分段..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className={`w-full rounded-xl px-3 py-2 text-xs md:text-sm transition-all focus:outline-none focus:ring-1 ${
+                          isDarkMode 
+                            ? 'bg-[#0F172A] border-slate-800 text-white placeholder-slate-500 focus:ring-[#00F0FF] focus:border-[#00F0FF]' 
+                            : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:ring-blue-500'
+                        }`}
+                      />
+                    </div>
+
+                    {/* MA select filter */}
+                    <div>
+                      <label className={`text-[11px] font-bold block mb-1.5 uppercase font-sans ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>均線多頭強度等級</label>
+                      <select 
+                        value={strengthFilter}
+                        onChange={(e) => setStrengthFilter(e.target.value)}
+                        className={`w-full rounded-xl px-3 py-2 text-xs md:text-sm font-sans focus:outline-none focus:ring-1 ${
+                          isDarkMode 
+                            ? 'bg-[#0F172A] border-slate-800 text-white focus:ring-[#00F0FF]' 
+                            : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-blue-500'
+                        }`}
+                      >
+                        <option value="all">任意均線排列強度</option>
+                        <option value="3">強度 3 (完美多頭排列 MA5&gt;20&gt;60&gt;120)</option>
+                        <option value="2">強度 2 (守在中強均線月季之上)</option>
+                        <option value="1">強度 1 (起步築底剛翻揚均線組)</option>
+                      </select>
+                    </div>
+
+                    {/* Price/Volume toggle */}
+                    <div>
+                      <label className={`text-[11px] font-bold block mb-1.5 uppercase font-sans ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>資金量能共識</label>
+                      <div className="flex items-center h-[38px]">
+                        <label className="flex items-center cursor-pointer space-x-2 text-xs md:text-sm select-none">
+                          <input 
+                            type="checkbox"
+                            checked={priceVolFilter}
+                            onChange={(e) => setPriceVolFilter(e.target.checked)}
+                            className={`rounded cursor-pointer focus:ring-0 focus:ring-offset-0 h-4.5 w-4.5 ${
+                              isDarkMode ? 'bg-[#0F172A] border-slate-800 text-[#00F0FF]' : 'bg-slate-50 border-slate-200 text-blue-600'
+                            }`}
+                          />
+                          <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>僅顯示「量價齊揚」標的</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Clear operations */}
+                    <div className="flex items-end justify-end">
+                      <button 
+                        onClick={() => {
+                          setSearchQuery('');
+                          setStrengthFilter('all');
+                          setPriceVolFilter(false);
+                        }}
+                        className={`w-full text-xs font-bold px-4 py-2.5 rounded-xl transition border cursor-pointer ${
+                          isDarkMode 
+                            ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' 
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        清除全部篩選條件
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <div className={`border rounded-2xl p-6 shadow-sm ${
                   isDarkMode ? 'bg-[#111827] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
                 }`}>
@@ -1107,10 +1255,16 @@ ${globalTechEtfs.map((etf, idx) => `
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mt-6">
-                    {TAIWAN_ONLY_ETFS.map((etf) => (
-                      <EtfCard key={etf.id} etf={etf} isDarkMode={isDarkMode} />
-                    ))}
+                  <div className="grid grid-cols-1 gap-6 mt-6">
+                    {filteredTaiwanOnlyEtfs.length > 0 ? (
+                      filteredTaiwanOnlyEtfs.map((etf) => (
+                        <EtfCard key={etf.id} etf={etf} isDarkMode={isDarkMode} />
+                      ))
+                    ) : (
+                      <div className="text-center py-12 text-slate-500 font-sans text-sm font-semibold">
+                        查無符合篩選條件的 ETF，請嘗試調整篩選條件。
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1119,6 +1273,95 @@ ${globalTechEtfs.map((etf, idx) => `
             {/* TAB 4: GLOBAL CONNECTED ETFs */}
             {activeTab === 'globalETFs' && (
               <div className="space-y-6 animate-fadeIn">
+                {/* 多因子量化交叉個股篩選櫃 */}
+                <div className={`border rounded-2xl p-5 space-y-4 shadow-sm ${
+                  isDarkMode ? 'bg-[#111827] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+                }`}>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <h3 className={`font-extrabold text-base md:text-lg ${isDarkMode ? 'text-[#00F0FF]' : 'text-slate-900'}`}>
+                      多因子量化交叉個股篩選櫃
+                    </h3>
+                    <span className={`text-[10px] px-2 py-1 font-mono rounded border ${
+                      isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 text-slate-600 border-slate-200'
+                    }`}>
+                      2026-05-30 資料庫狀態
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Search string */}
+                    <div>
+                      <label className={`text-[11px] font-bold block mb-1.5 uppercase font-sans ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>關鍵字篩選</label>
+                      <input 
+                        type="text"
+                        placeholder="搜尋代號、名稱、細分段..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className={`w-full rounded-xl px-3 py-2 text-xs md:text-sm transition-all focus:outline-none focus:ring-1 ${
+                          isDarkMode 
+                            ? 'bg-[#0F172A] border-slate-800 text-white placeholder-slate-500 focus:ring-[#00F0FF] focus:border-[#00F0FF]' 
+                            : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:ring-blue-500'
+                        }`}
+                      />
+                    </div>
+
+                    {/* MA select filter */}
+                    <div>
+                      <label className={`text-[11px] font-bold block mb-1.5 uppercase font-sans ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>均線多頭強度等級</label>
+                      <select 
+                        value={strengthFilter}
+                        onChange={(e) => setStrengthFilter(e.target.value)}
+                        className={`w-full rounded-xl px-3 py-2 text-xs md:text-sm font-sans focus:outline-none focus:ring-1 ${
+                          isDarkMode 
+                            ? 'bg-[#0F172A] border-slate-800 text-white focus:ring-[#00F0FF]' 
+                            : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-blue-500'
+                        }`}
+                      >
+                        <option value="all">任意均線排列強度</option>
+                        <option value="3">強度 3 (完美多頭排列 MA5&gt;20&gt;60&gt;120)</option>
+                        <option value="2">強度 2 (守在中強均線月季之上)</option>
+                        <option value="1">強度 1 (起步築底剛翻揚均線組)</option>
+                      </select>
+                    </div>
+
+                    {/* Price/Volume toggle */}
+                    <div>
+                      <label className={`text-[11px] font-bold block mb-1.5 uppercase font-sans ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>資金量能共識</label>
+                      <div className="flex items-center h-[38px]">
+                        <label className="flex items-center cursor-pointer space-x-2 text-xs md:text-sm select-none">
+                          <input 
+                            type="checkbox"
+                            checked={priceVolFilter}
+                            onChange={(e) => setPriceVolFilter(e.target.checked)}
+                            className={`rounded cursor-pointer focus:ring-0 focus:ring-offset-0 h-4.5 w-4.5 ${
+                              isDarkMode ? 'bg-[#0F172A] border-slate-800 text-[#00F0FF]' : 'bg-slate-50 border-slate-200 text-blue-600'
+                            }`}
+                          />
+                          <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>僅顯示「量價齊揚」標的</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Clear operations */}
+                    <div className="flex items-end justify-end">
+                      <button 
+                        onClick={() => {
+                          setSearchQuery('');
+                          setStrengthFilter('all');
+                          setPriceVolFilter(false);
+                        }}
+                        className={`w-full text-xs font-bold px-4 py-2.5 rounded-xl transition border cursor-pointer ${
+                          isDarkMode 
+                            ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' 
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        清除全部篩選條件
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <div className={`border rounded-2xl p-6 shadow-sm ${
                   isDarkMode ? 'bg-[#111827] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
                 }`}>
@@ -1141,10 +1384,16 @@ ${globalTechEtfs.map((etf, idx) => `
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mt-6">
-                    {GLOBAL_TECH_ETFS.map((etf) => (
-                      <EtfCard key={etf.id} etf={etf} isDarkMode={isDarkMode} />
-                    ))}
+                  <div className="grid grid-cols-1 gap-6 mt-6">
+                    {filteredGlobalTechEtfs.length > 0 ? (
+                      filteredGlobalTechEtfs.map((etf) => (
+                        <EtfCard key={etf.id} etf={etf} isDarkMode={isDarkMode} />
+                      ))
+                    ) : (
+                      <div className="text-center py-12 text-slate-500 font-sans text-sm font-semibold">
+                        查無符合篩選條件的 ETF，請嘗試調整篩選條件。
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1165,7 +1414,7 @@ ${globalTechEtfs.map((etf, idx) => `
                   reportGenerated={reportGenerated}
                   generatedReport={generatedReport}
                   copiedNotification={copiedNotification}
-                  fastForwardTo17={fastForwardTo17}
+                  fastForwardTo15={fastForwardTo15}
                   resetScheduler={resetScheduler}
                   triggerAutoReportGeneration={triggerAutoReportGeneration}
                   formatCountdown={formatCountdown}
@@ -1173,6 +1422,7 @@ ${globalTechEtfs.map((etf, idx) => `
                   taiwanStocks={taiwanStocks}
                   taiwanOnlyEtfs={taiwanOnlyEtfs}
                   globalTechEtfs={globalTechEtfs}
+                  usStocks={usStocks}
                   isDarkMode={isDarkMode}
                 />
               </div>

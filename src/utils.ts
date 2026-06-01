@@ -47,12 +47,71 @@ export function getGoogleFinanceUrl(symbol: string): string {
 }
 
 /**
+ * Resolves a beneficiary tag (e.g., "2330 台積電", "TSM", "00735") to its Google Finance URL.
+ */
+export function getBeneficiaryUrl(beneficiary: string): string {
+  if (!beneficiary) return 'https://www.google.com/finance';
+  
+  const clean = beneficiary.trim();
+  
+  // 1. Is there a 4-digit or more Taiwan STOCK symbol inside?
+  const idMatch = clean.match(/\b\d{4,5}[A-Za-z]?\b/);
+  if (idMatch) {
+    const code = idMatch[0];
+    // If it's 00981A or 00988A (active mutual funds/index listed on TPE)
+    if (code === '00981A' || code === '00988A') {
+      return getGoogleFinanceUrl(`${code}:TPE`);
+    }
+    // General Taiwan stock/ETF
+    return getGoogleFinanceUrl(`${code}.TW`);
+  }
+
+  // 2. Exact match check (Taiwan Active ETFs and other known variations)
+  if (clean.includes('00735')) return getGoogleFinanceUrl('00735.TW');
+  if (clean.includes('00981A')) return getGoogleFinanceUrl('00981A:TPE');
+  if (clean.includes('00988A')) return getGoogleFinanceUrl('00988A:TPE');
+  if (clean === '聯發科') return getGoogleFinanceUrl('2454.TW');
+  if (clean === '台積電') return getGoogleFinanceUrl('2330.TW');
+  if (clean === '奇鋐') return getGoogleFinanceUrl('3017.TW');
+  if (clean === '雙鴻') return getGoogleFinanceUrl('3324.TW');
+
+  // 3. For US stocks or standard ticker symbols, clean and get target URL
+  // Matches pure letters like "TSM", "NVDA", "PLTR", etc.
+  const usTickerMatch = clean.match(/^[A-Za-z]+/);
+  if (usTickerMatch) {
+    return getGoogleFinanceUrl(usTickerMatch[0]);
+  }
+
+  // Fallback: search query on Google Finance
+  return `https://www.google.com/finance/beta/quote/${encodeURIComponent(clean)}`;
+}
+
+/**
+ * Resolves any company holding name (such as "台積電 (台)", "NVIDIA (美)", "ASML") to a Google Finance search.
+ */
+export function getHoldingUrl(holdingName: string): string {
+  if (!holdingName) return 'https://www.google.com/finance';
+  
+  const clean = holdingName.replace(/\(.*?\)/g, '').trim(); // Remove parentheses like (美), (台)
+  return `https://www.google.com/search?q=${encodeURIComponent(clean)}+stock+price`;
+}
+
+/**
+ * Resolves a company sector tag to a Google Search query
+ */
+export function getSectorSearchUrl(sector: string): string {
+  if (!sector) return 'https://www.google.com/finance';
+  const cleanSector = sector.replace(/\(.*?\)/g, '').trim();
+  return `https://www.google.com/search?q=${encodeURIComponent(cleanSector)}+%E8%82%B1%E5%B8%82`;
+}
+
+/**
  * Returns if a symbol is associated with the Taiwan stock market.
  */
 export function isTaiwanAsset(symbol: string): boolean {
   if (!symbol) return false;
-  const clean = symbol.trim();
-  return clean.endsWith('.TW') || clean === 'T001.ACTIVE';
+  const clean = symbol.trim().toUpperCase();
+  return clean.endsWith('.TW') || clean.includes(':TPE') || clean === 'T001.ACTIVE' || /^\d+/.test(clean);
 }
 
 /**
